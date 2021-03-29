@@ -35,5 +35,5 @@ set(driver_sources main.cpp)
 blt_add_executable(
     NAME       driver
     SOURCES    ${driver_sources}
-    DEPENDS_ON imgui)
+    DEPENDS_ON imgui implot)
 
