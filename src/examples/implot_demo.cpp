@@ -74,8 +74,9 @@ int main(int, char**)
   // Cleanup
   ImGui_ImplOpenGL2_Shutdown();
   ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext();
+
   ImPlot::DestroyContext();
+  ImGui::DestroyContext();
 
   glfwDestroyWindow(window);
   glfwTerminate();
