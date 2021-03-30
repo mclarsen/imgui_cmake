@@ -1,3 +1,25 @@
+cmake_minimum_required(VERSION 3.7)
+################################
+# cmake policy selections
+################################
+# avoid default mac osx rpath settings for cmake 3.0
+cmake_policy(SET CMP0042 OLD)
+# avoid warnings for project commands w/o VERSION
+cmake_policy(SET CMP0048 NEW)
+
+project(imgui_cmake VERSION "0.0.1")
+
+################################
+# Setup BLT
+################################
+if(NOT BLT_CXX_STD)
+  set(BLT_CXX_STD "c++11" CACHE STRING "")
+endif()
+
+include(./blt/SetupBLT.cmake)
+include(./cmake/SetupOpenGL.cmake)
+include(./cmake/SetupGLFW.cmake)
+
 #######################################
 # Compile the IMGUI library
 #######################################
@@ -12,20 +34,26 @@ set(imgui_sources imgui/imgui.cpp
 set(imgui_headers imgui/imconfig.h
                   imgui/imgui.h)
 
+# Some of these add-ons expect to be in the imgui directory
+# so we will just add the includes
+include_directories(imgui)
+#######################################
+# implot
+#######################################
+set(implot_sources implot/implot.cpp
+                   implot/implot_demo.cpp
+                   implot/implot_items.cpp)
+
+set(implot_headers implot/implot.h)
+
+list(APPEND imgui_sources ${implot_sources})
+list(APPEND imgui_headers ${implot_headers})
 
 blt_add_library(
     NAME       imgui
     SOURCES    ${imgui_sources}
     HEADERS    ${imgui_headers}
     DEPENDS_ON opengl glfw)
-
-#######################################
-# Compile the IMGUI add_ons
-#######################################
-# Some of these add-ons expect to be in the imgui directory
-# so we will just add the includes
-include_directories(imgui)
-add_subdirectory(add_ons)
 
 #######################################
 # Compile the IMGUI driver program
@@ -35,5 +63,5 @@ set(driver_sources main.cpp)
 blt_add_executable(
     NAME       driver
     SOURCES    ${driver_sources}
-    DEPENDS_ON imgui implot)
+    DEPENDS_ON imgui)
 
