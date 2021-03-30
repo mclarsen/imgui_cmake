@@ -45,6 +45,7 @@ set(implot_sources implot/implot.cpp
                    implot/implot_items.cpp)
 
 set(implot_headers implot/implot.h)
+include_directories(implot)
 
 list(APPEND imgui_sources ${implot_sources})
 list(APPEND imgui_headers ${implot_headers})
@@ -55,13 +56,4 @@ blt_add_library(
     HEADERS    ${imgui_headers}
     DEPENDS_ON opengl glfw)
 
-#######################################
-# Compile the IMGUI driver program
-#######################################
-set(driver_sources main.cpp)
-
-blt_add_executable(
-    NAME       driver
-    SOURCES    ${driver_sources}
-    DEPENDS_ON imgui)
-
+add_subdirectory(examples)
