@@ -13,7 +13,7 @@ project(imgui_cmake VERSION "0.0.1")
 # Setup BLT
 ################################
 if(NOT BLT_CXX_STD)
-  set(BLT_CXX_STD "c++11" CACHE STRING "")
+  set(BLT_CXX_STD "c++14" CACHE STRING "")
 endif()
 
 include(./blt/SetupBLT.cmake)
@@ -45,10 +45,26 @@ set(implot_sources implot/implot.cpp
                    implot/implot_items.cpp)
 
 set(implot_headers implot/implot.h)
-include_directories(implot)
 
 list(APPEND imgui_sources ${implot_sources})
 list(APPEND imgui_headers ${implot_headers})
+
+include_directories(implot)
+
+#######################################
+# imgui node editor
+#######################################
+set(node_editor_sources imgui-node-editor/imgui_canvas.cpp
+                        imgui-node-editor/crude_json.cpp
+                        imgui-node-editor/imgui_node_editor.cpp
+                        imgui-node-editor/imgui_node_editor_api.cpp)
+
+set(node_editor_headers imgui-node-editor/imgui_node_editor.h)
+
+list(APPEND imgui_sources ${node_editor_sources})
+list(APPEND imgui_headers ${node_editor_headers})
+
+include_directories(imgui-node-editor)
 
 blt_add_library(
     NAME       imgui
