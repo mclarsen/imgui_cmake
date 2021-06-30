@@ -165,18 +165,18 @@ public:
 
     // For some reason, I made the entire window a giant button
     // since I can associate the texture id with the button
-    //ImGui::ImageButton((void*)(intptr_t)textureID,
-    //                   ImVec2(m_width , m_height),
-    //                   ImVec2(0,0),
-    //                   ImVec2(1,1),
-    //                   0);
+    ImGui::ImageButton((void*)(intptr_t)textureID,
+                       ImVec2(m_width , m_height),
+                       ImVec2(0,0),
+                       ImVec2(1,1),
+                       0);
     // this works but the mouse movements are screwed up
-    ImGui::GetWindowDrawList()->AddImage(
-       (void *)(intptr_t)textureID,
-       ImVec2(ImGui::GetCursorScreenPos()),
-       ImVec2(canvas_pos.x + m_width,canvas_pos.y + m_height),
-       ImVec2(0, 0),
-       ImVec2(1, 1));
+    //ImGui::GetWindowDrawList()->AddImage(
+    //   (void *)(intptr_t)textureID,
+    //   ImVec2(ImGui::GetCursorScreenPos()),
+    //   ImVec2(canvas_pos.x + m_width,canvas_pos.y + m_height),
+    //   ImVec2(0, 0),
+    //   ImVec2(1, 1));
 
 
     // Debug pixel colors
