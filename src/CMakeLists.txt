@@ -73,3 +73,4 @@ blt_add_library(
     DEPENDS_ON opengl glfw)
 
 add_subdirectory(examples)
+add_subdirectory(dvis)
