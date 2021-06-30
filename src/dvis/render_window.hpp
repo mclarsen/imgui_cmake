@@ -118,6 +118,27 @@ public:
     m_camera.reset_to_bounds(m_render_service.bounds());
   }
 
+  void render_controls()
+  {
+    // call another class that handles all the UI menu/controls
+    ImGui::SetNextWindowSize(ImVec2(200, 500), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Control Window", NULL);
+    dray::Vec<float,3> cam_pos = m_camera.get_pos();
+
+    static float pos_x = 0.001f;
+    pos_x = cam_pos[0];
+    ImGui::InputFloat("Camera X", &pos_x, -10.00000f, 100000.0f, "%.3f");
+    cam_pos[0] = pos_x;
+    m_camera.set_pos(cam_pos);
+    // more camera controls
+
+    // Todo: color picker
+
+    // Todo: field list
+    //
+
+    ImGui::End();
+  }
 
   // this is a dummy framebuffer
   void update_render_dims()
@@ -217,6 +238,8 @@ public:
     //m_render_service.publish(state);
     update_texture();
     ImGui::End();
+
+    render_controls();
   }
 
   void handle_mouse(const ImVec2 &canvas_pos)
