@@ -19,6 +19,7 @@ class RenderService
 protected:
   dray::Collection m_dataset;
   dray::AABB<3> m_bounds;
+  float m_move_factor;
   std::vector<std::string> m_fields;
   dray::Renderer m_renderer;
   std::shared_ptr<dray::Surface> m_surface;
@@ -37,8 +38,10 @@ public:
     dray::MeshBoundary boundary;
     m_dataset = boundary.execute(dataset);
     m_bounds = m_dataset.bounds();
+    //m_move_factor = sqrt(m_bounds.X.Length() * m_bounds.X.Length() + m_bounds.Y.Length() * m_bounds.Y.Length() +  
+    //              m_bounds.Z.Length() * m_bounds.Z.Length()) / 100.f;
 
-    // TODO: just add method that returns a vector of setring inside
+    // TODO: just add method that returns a vector of string inside
     // dray
     int num_domains = m_dataset.local_size();
     std::set<std::string> fset;
@@ -122,20 +125,133 @@ public:
   {
     // call another class that handles all the UI menu/controls
     ImGui::SetNextWindowSize(ImVec2(200, 500), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Control Window", NULL);
-    dray::Vec<float,3> cam_pos = m_camera.get_pos();
+    ImGui::Begin("Control Window", NULL, ImGuiWindowFlags_MenuBar);
 
-    static float pos_x = 0.001f;
-    pos_x = cam_pos[0];
-    ImGui::InputFloat("Camera X", &pos_x, -10.00000f, 100000.0f, "%.3f");
-    cam_pos[0] = pos_x;
-    m_camera.set_pos(cam_pos);
-    // more camera controls
+    // TODO: File system
+    /********** FILE SYSTEM ***********/
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Menu"))
+        {
+            ShowExampleMenuFile();
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
 
-    // Todo: color picker
+    // TODO: Camera Controls
+    /********** CAMERA CONTROLS ***********/
+    if (ImGui::CollapsingHeader("Camera")) 
+    {
+      // ***** Camera Position *****:
+      dray::Vec<float, 3> cam_pos = m_camera.get_pos();
+      static float vec3f[3] = { 0.0f, 0.0f, 0.0f };
+      vec3f[0] = cam_pos[0];
+      vec3f[1] = cam_pos[1];
+      vec3f[2] = cam_pos[2];
+      ImGui::DragFloat3("Camera Position", vec3f, 0.1f, -10.0f, 10.0f);
+      cam_pos[0] = vec3f[0];
+      cam_pos[1] = vec3f[1];
+      cam_pos[2] = vec3f[2];
+      m_camera.set_pos(cam_pos);
 
-    // Todo: field list
-    //
+      // ***** Reset Camera Position *****:
+      if (ImGui::Button("Reset Camera"))
+      {
+        m_camera.reset_to_bounds(m_render_service.bounds());
+      }
+
+      // ***** Camera Zoom *****:
+      static float zoom = 1.0f;
+      ImGui::SliderFloat("Zoom", &zoom, 0.01f, 10.0f);
+      m_camera.set_zoom(zoom);
+
+      // ***** Camera Fov *****:
+      static float fov = 60.0f;
+      fov = m_camera.get_fov();
+      ImGui::SliderFloat("Fov", &fov, 0.01f, 180.0f);
+      m_camera.set_fov(fov);
+    }
+    
+
+    // TODO: color picker
+    /********** COLORS ***********/
+    if (ImGui::CollapsingHeader("Colors")) 
+    {
+      // ***** Color Picker *****:
+      // Generate a default palette. The palette will persist and can be edited.
+      static bool saved_palette_init = true;
+      static ImVec4 saved_palette[32] = {};
+      if (saved_palette_init)
+      {
+          for (int n = 0; n < IM_ARRAYSIZE(saved_palette); n++)
+          {
+              ImGui::ColorConvertHSVtoRGB(n / 31.0f, 0.8f, 0.8f,
+                  saved_palette[n].x, saved_palette[n].y, saved_palette[n].z);
+              saved_palette[n].w = 1.0f; // Alpha
+          }
+          saved_palette_init = false;
+      }
+
+      static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+      static ImVec4 backup_color;
+      bool open_popup = ImGui::ColorButton("MyColor##3b", color);
+      ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+      open_popup |= ImGui::Button("Palette Picker");
+      if (open_popup)
+      {
+          ImGui::OpenPopup("mypicker");
+          backup_color = color;
+      }
+      if (ImGui::BeginPopup("mypicker"))
+      {
+          ImGui::Text("MY CUSTOM COLOR PICKER WITH AN AMAZING PALETTE!");
+          ImGui::Separator();
+          ImGui::ColorPicker4("##picker", (float*)&color);
+          ImGui::SameLine();
+
+          ImGui::BeginGroup(); // Lock X position
+          ImGui::Text("Current");
+          ImGui::ColorButton("##current", color, ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_AlphaPreviewHalf, ImVec2(60, 40));
+          ImGui::Text("Previous");
+          if (ImGui::ColorButton("##previous", backup_color, ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_AlphaPreviewHalf, ImVec2(60, 40)))
+              color = backup_color;
+          ImGui::Separator();
+          ImGui::Text("Palette");
+          for (int n = 0; n < IM_ARRAYSIZE(saved_palette); n++)
+          {
+              ImGui::PushID(n);
+              if ((n % 8) != 0)
+                  ImGui::SameLine(0.0f, ImGui::GetStyle().ItemSpacing.y);
+
+              ImGuiColorEditFlags palette_button_flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoTooltip;
+              if (ImGui::ColorButton("##palette", saved_palette[n], palette_button_flags, ImVec2(20, 20)))
+                  color = ImVec4(saved_palette[n].x, saved_palette[n].y, saved_palette[n].z, color.w); // Preserve alpha!
+
+              // Allow user to drop colors into each palette entry. Note that ColorButton() is already a
+              // drag source by default, unless specifying the ImGuiColorEditFlags_NoDragDrop flag.
+              if (ImGui::BeginDragDropTarget())
+              {
+                  if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_3F))
+                      memcpy((float*)&saved_palette[n], payload->Data, sizeof(float) * 3);
+                  if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_4F))
+                      memcpy((float*)&saved_palette[n], payload->Data, sizeof(float) * 4);
+                  ImGui::EndDragDropTarget();
+              }
+
+              ImGui::PopID();
+          }
+          ImGui::EndGroup();
+          ImGui::EndPopup();
+      }
+    }
+
+    // TODO: field list
+    /********** FIELD LIST ***********/
+    if (ImGui::CollapsingHeader("Field List")) 
+    {
+
+    }
 
     ImGui::End();
   }
@@ -172,7 +288,7 @@ public:
     // custom window
     std::string wname = "Render Window";
 
-    ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
     ImGui::Begin(wname.c_str(), NULL);
     ImVec2 content_size = ImGui::GetContentRegionAvail();
     if(content_size.x != m_width || content_size.y != m_height)
@@ -292,6 +408,79 @@ public:
     //m_render_service.publish(state);
   }
 
+  static void ShowExampleMenuFile()
+  {
+    ImGui::MenuItem("(demo menu)", NULL, false, false);
+    if (ImGui::MenuItem("New")) {}
+    if (ImGui::MenuItem("Open", "Ctrl+O")) {}
+    if (ImGui::BeginMenu("Open Recent"))
+    {
+      ImGui::MenuItem("fish_hat.c");
+      ImGui::MenuItem("fish_hat.inl");
+      ImGui::MenuItem("fish_hat.h");
+      if (ImGui::BeginMenu("More.."))
+      {
+        ImGui::MenuItem("Hello");
+        ImGui::MenuItem("Sailor");
+        if (ImGui::BeginMenu("Recurse.."))
+        {
+          ShowExampleMenuFile();
+          ImGui::EndMenu();
+        }
+        ImGui::EndMenu();
+      }
+      ImGui::EndMenu();
+    }
+    if (ImGui::MenuItem("Save", "Ctrl+S")) {}
+    if (ImGui::MenuItem("Save As..")) {}
 
+    ImGui::Separator();
+    if (ImGui::BeginMenu("Options"))
+    {
+      static bool enabled = true;
+      ImGui::MenuItem("Enabled", "", &enabled);
+      ImGui::BeginChild("child", ImVec2(0, 60), true);
+      for (int i = 0; i < 10; i++) ImGui::Text("Scrolling Text %d", i);
+      ImGui::EndChild();
+      static float f = 0.5f;
+      static int n = 0;
+      ImGui::SliderFloat("Value", &f, 0.0f, 1.0f);
+      ImGui::InputFloat("Input", &f, 0.1f);
+      ImGui::Combo("Combo", &n, "Yes\0No\0Maybe\0\0");
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Colors"))
+    {
+      float sz = ImGui::GetTextLineHeight();
+      for (int i = 0; i < ImGuiCol_COUNT; i++)
+      {
+        const char* name = ImGui::GetStyleColorName((ImGuiCol)i);
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + sz, p.y + sz), ImGui::GetColorU32((ImGuiCol)i));
+        ImGui::Dummy(ImVec2(sz, sz));
+        ImGui::SameLine();
+        ImGui::MenuItem(name);
+      }
+      ImGui::EndMenu();
+    }
+
+    // Here we demonstrate appending again to the "Options" menu (which we already created above)
+    // Of course in this demo it is a little bit silly that this function calls BeginMenu("Options") twice.
+    // In a real code-base using it would make senses to use this feature from very different code locations.
+    if (ImGui::BeginMenu("Options")) // <-- Append!
+    {
+      static bool b = true;
+      ImGui::Checkbox("SomeOption", &b);
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Disabled", false)) // Disabled
+    {
+      IM_ASSERT(0);
+    }
+    if (ImGui::MenuItem("Checked", NULL, true)) {}
+    if (ImGui::MenuItem("Quit", "Alt+F4")) {}
+  }
 };
 #endif
