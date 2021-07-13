@@ -4,6 +4,7 @@
 #include <dray/data_model/collection.hpp>
 #include <dray/rendering/camera.hpp>
 #include <dray/aabb.hpp>
+#include <dray/transform_3d.hpp>
 
 #include <vector>
 
@@ -38,8 +39,9 @@ public:
     dray::MeshBoundary boundary;
     m_dataset = boundary.execute(dataset);
     m_bounds = m_dataset.bounds();
-    //m_move_factor = sqrt(m_bounds.X.Length() * m_bounds.X.Length() + m_bounds.Y.Length() * m_bounds.Y.Length() +  
-    //              m_bounds.Z.Length() * m_bounds.Z.Length()) / 100.f;
+    m_move_factor = sqrt(m_bounds.m_ranges[0].length() * m_bounds.m_ranges[0].length() +
+                    m_bounds.m_ranges[1].length() * m_bounds.m_ranges[1].length() +  
+                    m_bounds.m_ranges[2].length() * m_bounds.m_ranges[2].length()) / 100.f;
 
     // TODO: just add method that returns a vector of string inside
     // dray
@@ -79,6 +81,11 @@ public:
   dray::AABB<3> bounds() const
   {
     return m_bounds;
+  }
+
+  float move_factor() 
+  {
+    return m_move_factor;
   }
 
   dray::Framebuffer render(dray::Camera &camera)
@@ -340,13 +347,10 @@ public:
     //}
 
     handle_mouse(canvas_pos);
-
-    //if(ImGui::IsWindowFocused())
-    //{
-    //  handle_keys();
-    //}
-
-    //ImGui::End();
+    if(ImGui::IsWindowFocused())
+    {
+      handle_keys();
+    }
 
     //conduit::Node state;
     //serialize(state);
@@ -408,6 +412,138 @@ public:
     //m_render_service.publish(state);
   }
 
+  /********** HANDLE KEYS **********/
+  void handle_keys()
+  {
+    float m_move_factor = m_render_service.move_factor();
+    if (ImGui::IsKeyPressed(GLFW_KEY_W))
+    {
+      dray::Vec<float, 3> look_at, pos, dir;
+      look_at = m_camera.get_look_at();
+      pos = m_camera.get_pos();
+      dir = look_at - pos;
+      dir.normalize();
+      pos = pos + dir * m_move_factor;
+      look_at = pos + dir * m_move_factor;
+      m_camera.set_pos(pos);
+      m_camera.set_look_at(look_at);
+    }
+    if (ImGui::IsKeyPressed(GLFW_KEY_S) &&
+        !ImGui::IsKeyPressed(GLFW_KEY_LEFT_CONTROL))
+    {
+      dray::Vec<float, 3> look_at, pos, dir;
+      look_at = m_camera.get_look_at();
+      pos = m_camera.get_pos();
+      dir = look_at - pos;
+      dir.normalize();
+      pos = pos - dir * m_move_factor;
+      m_camera.set_pos(pos);
+    }
+    if (ImGui::IsKeyPressed(GLFW_KEY_A))
+    {
+      dray::Vec<float, 3> look_at, pos, dir, up, right;
+
+      up = m_camera.get_up();
+      look_at = m_camera.get_look_at();
+      pos = m_camera.get_pos();
+
+      dir = look_at - pos;
+      right = cross(dir, up);
+      right.normalize();
+
+      pos = pos - right * m_move_factor;
+      look_at = pos + dir;  // Missing m_move_factor? ***
+
+      m_camera.set_pos(pos);
+      m_camera.set_look_at(look_at);
+    }
+    if (ImGui::IsKeyPressed(GLFW_KEY_D))
+    {
+      dray::Vec<float, 3> look_at, pos, dir, up, right;
+
+      up = m_camera.get_up();
+      look_at = m_camera.get_look_at();
+      pos = m_camera.get_pos();
+
+      dir = look_at - pos;
+      right = cross(dir, up);
+      right.normalize();
+
+      pos = pos + right * m_move_factor;
+      look_at = pos + dir; // Missing m_move_factor? ***
+
+      m_camera.set_pos(pos);
+      m_camera.set_look_at(look_at);
+    }
+    if (ImGui::IsKeyPressed(GLFW_KEY_E))
+    {
+      dray::Vec<float, 3> look_at, pos, up;
+
+      look_at = m_camera.get_look_at();
+      pos = m_camera.get_pos();
+      up = m_camera.get_up();
+
+      pos = pos + up * m_move_factor;
+      look_at = look_at - up * m_move_factor;
+
+      m_camera.set_pos(pos);
+      m_camera.set_look_at(look_at);
+    }
+    if (ImGui::IsKeyPressed(GLFW_KEY_C))
+    {
+      dray::Vec<float, 3> look_at, pos, up;
+
+      look_at = m_camera.get_look_at();
+      pos = m_camera.get_pos();
+      up = m_camera.get_up();
+
+      pos = pos - up * m_move_factor;
+      look_at = look_at + up * m_move_factor;
+
+      m_camera.set_pos(pos);
+      m_camera.set_look_at(look_at);
+    }
+    if (ImGui::IsKeyPressed(GLFW_KEY_Q))
+    {
+      dray::Vec<float, 3> look_at, dir, up, pos;
+
+      up = m_camera.get_up();
+      look_at = m_camera.get_look_at();
+      pos = m_camera.get_pos();
+      dir = look_at - pos;
+      float rot_fact = 2.f;
+      auto rot_mat = dray::rotate(rot_fact, dir);
+      up = dray::transform_vector(rot_mat, up);
+      m_camera.set_up(up);
+    }
+    if (ImGui::IsKeyPressed(GLFW_KEY_Z))
+    {
+      dray::Vec<float, 3> look_at, dir, up, pos;
+
+      up = m_camera.get_up();
+      look_at = m_camera.get_look_at();
+      pos = m_camera.get_pos();
+      dir = look_at - pos;
+      float rot_fact = -2.f;
+      auto rot_mat = dray::rotate(rot_fact, dir);
+      up = dray::transform_vector(rot_mat, up);
+      m_camera.set_up(up);
+    }
+
+    if (ImGui::IsKeyPressed(GLFW_KEY_S) &&
+        ImGui::IsKeyPressed(GLFW_KEY_LEFT_CONTROL))
+    {
+      save_image();
+    }
+  }
+
+  void save_image()
+  {
+    //TODO: Save function for RenderService
+    //m_render_service.save("snapshot.pnm");
+  }
+
+  /********** MENU BAR **********/
   static void ShowExampleMenuFile()
   {
     ImGui::MenuItem("(demo menu)", NULL, false, false);
