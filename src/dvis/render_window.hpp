@@ -15,6 +15,8 @@
 #include <dray/rendering/renderer.hpp>
 #include <set>
 
+#include "imGuIZMOquat.h"
+
 class RenderService
 {
 protected:
@@ -24,6 +26,10 @@ protected:
   std::vector<std::string> m_fields;
   dray::Renderer m_renderer;
   std::shared_ptr<dray::Surface> m_surface;
+  
+  // two helper functions, not really necessary (but comfortable)
+  void setRotation(const quat &q) { qRot = q; }
+  quat& getRotation() { return qRot; }
 
 public:
   RenderService()
@@ -178,6 +184,10 @@ public:
       fov = m_camera.get_fov();
       ImGui::SliderFloat("Fov", &fov, 0.01f, 180.0f);
       m_camera.set_fov(fov);
+
+      // ***** imGuIZMO *****:
+      quat qt = getRotation();
+      if(ImGui::gizmo3D("##gizmo1", qt /*, size,  mode */)) {  setRotation(qt); }
     }
     
 
