@@ -16,6 +16,7 @@
 #include <set>
 
 #include "imGuIZMOquat.h"
+#include "vgMath.h"
 
 class RenderService
 {
@@ -26,10 +27,6 @@ protected:
   std::vector<std::string> m_fields;
   dray::Renderer m_renderer;
   std::shared_ptr<dray::Surface> m_surface;
-
-  // two helper functions, not really necessary (but comfortable)
-  //void setRotation(const quat &q) { qRot = q; }
-  //quat& getRotation() { return qRot; }
 
 public:
   RenderService()
@@ -117,6 +114,12 @@ protected:
   RenderService                      m_render_service;
   dray::Framebuffer                  m_framebuffer;
 
+  // For imGuIZMO, declare static or global variable or member class quaternion
+  quat qRot = quat(1.f, 0.f, 0.f, 0.f);
+  // two helper functions, not really necessary (but comfortable)
+  void setRotation(const quat &q) { qRot = q; }
+  quat& getRotation() { return qRot; }
+
 public:
   RenderWindow()
     : m_width(512),
@@ -186,8 +189,8 @@ public:
       m_camera.set_fov(fov);
 
       // ***** imGuIZMO *****:
-      static quat qt;
-      ImGui::gizmo3D("##gizmo1", qt /*, size,  mode */);
+      quat qt = getRotation();
+      if(ImGui::gizmo3D("##gizmo1", qt /*, size,  mode */)) {  setRotation(qt); }
     }
 
 
