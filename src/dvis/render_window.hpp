@@ -26,10 +26,10 @@ protected:
   std::vector<std::string> m_fields;
   dray::Renderer m_renderer;
   std::shared_ptr<dray::Surface> m_surface;
-  
+
   // two helper functions, not really necessary (but comfortable)
-  void setRotation(const quat &q) { qRot = q; }
-  quat& getRotation() { return qRot; }
+  //void setRotation(const quat &q) { qRot = q; }
+  //quat& getRotation() { return qRot; }
 
 public:
   RenderService()
@@ -46,7 +46,7 @@ public:
     m_dataset = boundary.execute(dataset);
     m_bounds = m_dataset.bounds();
     m_move_factor = sqrt(m_bounds.m_ranges[0].length() * m_bounds.m_ranges[0].length() +
-                    m_bounds.m_ranges[1].length() * m_bounds.m_ranges[1].length() +  
+                    m_bounds.m_ranges[1].length() * m_bounds.m_ranges[1].length() +
                     m_bounds.m_ranges[2].length() * m_bounds.m_ranges[2].length()) / 100.f;
 
     // TODO: just add method that returns a vector of string inside
@@ -89,7 +89,7 @@ public:
     return m_bounds;
   }
 
-  float move_factor() 
+  float move_factor()
   {
     return m_move_factor;
   }
@@ -154,7 +154,7 @@ public:
 
     // TODO: Camera Controls
     /********** CAMERA CONTROLS ***********/
-    if (ImGui::CollapsingHeader("Camera")) 
+    if (ImGui::CollapsingHeader("Camera"))
     {
       // ***** Camera Position *****:
       dray::Vec<float, 3> cam_pos = m_camera.get_pos();
@@ -186,14 +186,14 @@ public:
       m_camera.set_fov(fov);
 
       // ***** imGuIZMO *****:
-      quat qt = getRotation();
-      if(ImGui::gizmo3D("##gizmo1", qt /*, size,  mode */)) {  setRotation(qt); }
+      static quat qt;
+      ImGui::gizmo3D("##gizmo1", qt /*, size,  mode */);
     }
-    
+
 
     // TODO: color picker
     /********** COLORS ***********/
-    if (ImGui::CollapsingHeader("Colors")) 
+    if (ImGui::CollapsingHeader("Colors"))
     {
       // ***** Color Picker *****:
       // Generate a default palette. The palette will persist and can be edited.
@@ -265,7 +265,7 @@ public:
 
     // TODO: field list
     /********** FIELD LIST ***********/
-    if (ImGui::CollapsingHeader("Field List")) 
+    if (ImGui::CollapsingHeader("Field List"))
     {
 
     }

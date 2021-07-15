@@ -61,10 +61,21 @@ set(node_editor_sources imgui-node-editor/imgui_canvas.cpp
 
 set(node_editor_headers imgui-node-editor/imgui_node_editor.h)
 
-list(APPEND imgui_sources ${node_editor_sources})
-list(APPEND imgui_headers ${node_editor_headers})
+#######################################
+# imgui zmo widgets
+#######################################
+set(zmo_sources imgui_zmo/imGuIZMOquat.cpp)
 
-include_directories(imgui-node-editor)
+set(zmo_headers imgui_zmo/imGuIZMOquat.h
+                imgui_zmo/vGizmo.h
+                imgui_zmo/vgConfig.h
+                imgui_zmo/vgMath.h
+                imgui_zmo/vGizmoMath.h)
+
+list(APPEND imgui_sources ${zmo_sources})
+list(APPEND imgui_headers ${zmo_headers})
+
+include_directories(imgui_zmo)
 
 blt_add_library(
     NAME       imgui
