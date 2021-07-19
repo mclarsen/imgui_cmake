@@ -77,6 +77,18 @@ list(APPEND imgui_headers ${zmo_headers})
 
 include_directories(imgui_zmo)
 
+#######################################
+# imgui filesystem
+#######################################
+set(filesystem_sources imgui_filesystem/imguifilesystem.cpp)
+
+set(filesystem_headers imgui_filesystem/imguifilesystem.h)
+
+list(APPEND imgui_sources ${filesystem_sources})
+list(APPEND imgui_headers ${filesystem_headers})
+
+include_directories(imgui_filesystem)
+
 blt_add_library(
     NAME       imgui
     SOURCES    ${imgui_sources}

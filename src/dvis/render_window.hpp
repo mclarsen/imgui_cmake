@@ -192,24 +192,27 @@ public:
       quat qt = getRotation();
       if(ImGui::gizmo3D("##gizmo1", qt, 240 /*,  mode */)) {  setRotation(qt); }
       mat4 modelMatrix = mat4_cast(qt);
-      // now you have modelMatrix with rotation then can build MV and MVP matrix
-      // dray::Matrix<float, 4, 4> rotate = modelMatrix;
+      // Now you have a vgMath mat4 modelMatrix with rotation then can build MV and MVP matrix. To translate mat4 into dray::Matrix<float, 4, 4>: 
+      //  The dray::Matrix is made of 4 dray::Vec<T,4> vectors. The mat4 matrix is made of 4 vgMath Vec4 vectors.
+      
 
-      // dray::Matrix<float, 4, 4> trans = translate (-m_camera.get_look_at());
-      // dray::Matrix<float, 4, 4> inv_trans = translate (m_camera.get_look_at());
+      dray::Matrix<float, 4, 4> rotate = modelMatrix;
 
-      // dray::Matrix<float, 4, 4> view = view_matrix ();
-      // view (0, 3) = 0;
-      // view (1, 3) = 0;
-      // view (2, 3) = 0;
+      dray::Matrix<float, 4, 4> trans = translate (-m_camera.get_look_at());
+      dray::Matrix<float, 4, 4> inv_trans = translate (m_camera.get_look_at());
 
-      // dray::Matrix<float, 4, 4> inverseView = view.transpose ();
+      dray::Matrix<float, 4, 4> view = view_matrix ();
+      view (0, 3) = 0;
+      view (1, 3) = 0;
+      view (2, 3) = 0;
 
-      // dray::Matrix<float, 4, 4> full_transform = inv_trans * inverseView * rotate * view * trans;
+      dray::Matrix<float, 4, 4> inverseView = view.transpose ();
 
-      // m_camera.set_pos(transform_point (full_transform, m_camera.get_pos()));
-      // m_camera.set_look_at(transform_point (full_transform, m_camera.get_look_at()));
-      // m_camera.set_up(transform_vector (full_transform, m_camera.get_up()));
+      dray::Matrix<float, 4, 4> full_transform = inv_trans * inverseView * rotate * view * trans;
+
+      m_camera.set_pos(transform_point (full_transform, m_camera.get_pos()));
+      m_camera.set_look_at(transform_point (full_transform, m_camera.get_look_at()));
+      m_camera.set_up(transform_vector (full_transform, m_camera.get_up()));
     }
 
     // TODO: color picker
