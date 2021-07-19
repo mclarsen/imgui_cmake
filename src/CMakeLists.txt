@@ -82,7 +82,8 @@ include_directories(imgui_zmo)
 #######################################
 set(filesystem_sources imgui_filesystem/imguifilesystem.cpp)
 
-set(filesystem_headers imgui_filesystem/imguifilesystem.h)
+set(filesystem_headers imgui_filesystem/imguifilesystem.h
+                       imgui_filesystem/dirent_portable.h)
 
 list(APPEND imgui_sources ${filesystem_sources})
 list(APPEND imgui_headers ${filesystem_headers})
