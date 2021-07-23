@@ -18,6 +18,8 @@
 #include "imGuIZMOquat.h"
 #include "vgMath.h"
 
+#include "imguifilesystem.h"
+
 class RenderService
 {
 protected:
@@ -143,16 +145,128 @@ public:
     ImGui::SetNextWindowSize(ImVec2(200, 500), ImGuiCond_FirstUseEver);
     ImGui::Begin("Control Window", NULL, ImGuiWindowFlags_MenuBar);
 
-    // TODO: File system
-    /********** FILE SYSTEM ***********/
+    bool file_explorer = false;
+    bool session_save = false;
+    bool session_load = false; 
+    /********** MENU BAR ***********/
     if (ImGui::BeginMenuBar())
     {
-        if (ImGui::BeginMenu("Menu"))
+      //***** File System *****/
+      if (ImGui::BeginMenu("File"))
+      {
+        ImGui::MenuItem("(demo menu)", NULL, false, false);
+        if (ImGui::MenuItem("Open", "Ctrl+O"))
         {
-            ShowExampleMenuFile();
-            ImGui::EndMenu();
+          file_explorer = true;
         }
-        ImGui::EndMenuBar();
+        // TODO: Open Recent capabilities
+        // if (ImGui::BeginMenu("Open Recent"))
+        // {
+        //   ImGui::MenuItem("fish_hat.c");
+        //   ImGui::MenuItem("fish_hat.inl");
+        //   ImGui::MenuItem("fish_hat.h");
+        //   if (ImGui::BeginMenu("More.."))
+        //   {
+        //     ImGui::MenuItem("Hello");
+        //     ImGui::MenuItem("Sailor");
+        //     if (ImGui::BeginMenu("Recurse.."))
+        //     {
+        //       ShowExampleMenuFile();
+        //       ImGui::EndMenu();
+        //     }
+        //     ImGui::EndMenu();
+        //   }
+        //   ImGui::EndMenu();
+        // }
+        if (ImGui::MenuItem("Save", "Ctrl+S")) 
+        {
+          // session_save = true;
+        }
+        ImGui::Separator();
+        if (ImGui::BeginMenu("Options"))
+        {
+          static bool enabled = true;
+          ImGui::MenuItem("Enabled", "", &enabled);
+          ImGui::BeginChild("child", ImVec2(0, 60), true);
+          for (int i = 0; i < 10; i++) ImGui::Text("Scrolling Text %d", i);
+          ImGui::EndChild();
+          static float f = 0.5f;
+          static int n = 0;
+          ImGui::SliderFloat("Value", &f, 0.0f, 1.0f);
+          ImGui::InputFloat("Input", &f, 0.1f);
+          ImGui::Combo("Combo", &n, "Yes\0No\0Maybe\0\0");
+          ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Colors"))
+        {
+          float sz = ImGui::GetTextLineHeight();
+          for (int i = 0; i < ImGuiCol_COUNT; i++)
+          {
+            const char* name = ImGui::GetStyleColorName((ImGuiCol)i);
+            ImVec2 p = ImGui::GetCursorScreenPos();
+            ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + sz, p.y + sz), ImGui::GetColorU32((ImGuiCol)i));
+            ImGui::Dummy(ImVec2(sz, sz));
+            ImGui::SameLine();
+            ImGui::MenuItem(name);
+          }
+          ImGui::EndMenu();
+        }
+
+        // Here we demonstrate appending again to the "Options" menu (which we already created above)
+        // Of course in this demo it is a little bit silly that this function calls BeginMenu("Options") twice.
+        // In a real code-base using it would make senses to use this feature from very different code locations.
+        if (ImGui::BeginMenu("Options")) // <-- Append!
+        {
+          static bool b = true;
+          ImGui::Checkbox("SomeOption", &b);
+          ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Disabled", false)) // Disabled
+        {
+          IM_ASSERT(0);
+        }
+        if (ImGui::MenuItem("Checked", NULL, true)) {}
+        if (ImGui::MenuItem("Quit", "Alt+F4")) {}
+  
+        ImGui::EndMenu();
+      }
+      ImGui::EndMenuBar();
+
+      // TODO: Save As capabilities
+      // if (ImGui::MenuItem("Save As..")) 
+      // {
+      //
+      // }
+      if (ImGui::MenuItem("Load Session", ""))
+      {
+        // session_load = true;
+      } 
+
+      static ImGuiFs::Dialog open_dlg;
+      std::string file_path = open_dlg.chooseFileDialog(file_explorer);
+      if(file_path != "")
+      {
+        //DEBUG
+        std::cout << "File path is: " << file_path << "\n";
+        // load_dataset(file_path);
+        m_render_service.load_root_file(file_path);
+      }
+
+      // static ImGuiFs::Dialog save_dlg;
+      // std::string session_file = save_dlg.saveFileDialog(session_save);
+      // if(session_file != "")
+      // {
+      //   save_session(session_file);
+      // }
+
+      // static ImGuiFs::Dialog load_dlg;
+      // session_file = load_dlg.chooseFileDialog(session_load);
+      // if(session_file != "")
+      // {
+      //   load_session(session_file);
+        // }
     }
 
     // TODO: Camera Controls
@@ -190,29 +304,43 @@ public:
 
       // ***** imGuIZMO *****:
       quat qt = getRotation();
-      if(ImGui::gizmo3D("##gizmo1", qt, 240 /*,  mode */)) {  setRotation(qt); }
-      mat4 modelMatrix = mat4_cast(qt);
-      // Now you have a vgMath mat4 modelMatrix with rotation then can build MV and MVP matrix. To translate mat4 into dray::Matrix<float, 4, 4>: 
-      //  The dray::Matrix is made of 4 dray::Vec<T,4> vectors. The mat4 matrix is made of 4 vgMath Vec4 vectors.
+      if(ImGui::gizmo3D("##gizmo1", qt, 240 /*,  mode */)) 
+      {  
+        setRotation(qt); 
+
+        mat4 modelMatrix = mat4_cast(qt);
+        // Now you have a vgMath mat4 modelMatrix with rotation then can build MV and MVP matrix. To translate mat4 into dray::Matrix<float, 4, 4>: 
+        //  The dray::Matrix is made of 4 dray::Vec<T,4> vectors. The mat4 matrix is made of 4 vgMath Vec4 vectors.
+        //  Assign the row-column data for the rotation matrix based on the corresponding row-column of the modelMatrix.
+        // TODO: look for the cast function in vgm from mat4 to quat.
+        dray::Matrix<float, 4, 4> rotate;
+        for (int i = 0; i < 4; ++i)
+        {
+          for (int j = 0; j < 4; ++j)
+          {
+            rotate[i][j] = modelMatrix[i][j];     
+          }
+        }
+
+        dray::Matrix<float, 4, 4> trans = translate (-m_camera.get_look_at());
+        dray::Matrix<float, 4, 4> inv_trans = translate (m_camera.get_look_at());
+
+        dray::Matrix<float, 4, 4> view = m_camera.view_matrix ();
+        view (0, 3) = 0;
+        view (1, 3) = 0;
+        view (2, 3) = 0;
+
+        dray::Matrix<float, 4, 4> inverseView = view.transpose ();
+
+        dray::Matrix<float, 4, 4> full_transform = inv_trans * inverseView * rotate * view * trans;
+
+        m_camera.set_pos(transform_point (full_transform, m_camera.get_pos()));
+        m_camera.set_look_at(transform_point (full_transform, m_camera.get_look_at()));
+        m_camera.set_up(transform_vector (full_transform, m_camera.get_up()));
+
+        setRotation(quat(1.f, 0.f, 0.f, 0.f));
+      }
       
-
-      dray::Matrix<float, 4, 4> rotate = modelMatrix;
-
-      dray::Matrix<float, 4, 4> trans = translate (-m_camera.get_look_at());
-      dray::Matrix<float, 4, 4> inv_trans = translate (m_camera.get_look_at());
-
-      dray::Matrix<float, 4, 4> view = view_matrix ();
-      view (0, 3) = 0;
-      view (1, 3) = 0;
-      view (2, 3) = 0;
-
-      dray::Matrix<float, 4, 4> inverseView = view.transpose ();
-
-      dray::Matrix<float, 4, 4> full_transform = inv_trans * inverseView * rotate * view * trans;
-
-      m_camera.set_pos(transform_point (full_transform, m_camera.get_pos()));
-      m_camera.set_look_at(transform_point (full_transform, m_camera.get_look_at()));
-      m_camera.set_up(transform_vector (full_transform, m_camera.get_up()));
     }
 
     // TODO: color picker
@@ -577,80 +705,42 @@ public:
     //m_render_service.save("snapshot.pnm");
   }
 
-  /********** MENU BAR **********/
-  static void ShowExampleMenuFile()
-  {
-    ImGui::MenuItem("(demo menu)", NULL, false, false);
-    if (ImGui::MenuItem("New")) {}
-    if (ImGui::MenuItem("Open", "Ctrl+O")) {}
-    if (ImGui::BeginMenu("Open Recent"))
-    {
-      ImGui::MenuItem("fish_hat.c");
-      ImGui::MenuItem("fish_hat.inl");
-      ImGui::MenuItem("fish_hat.h");
-      if (ImGui::BeginMenu("More.."))
-      {
-        ImGui::MenuItem("Hello");
-        ImGui::MenuItem("Sailor");
-        if (ImGui::BeginMenu("Recurse.."))
-        {
-          ShowExampleMenuFile();
-          ImGui::EndMenu();
-        }
-        ImGui::EndMenu();
-      }
-      ImGui::EndMenu();
-    }
-    if (ImGui::MenuItem("Save", "Ctrl+S")) {}
-    if (ImGui::MenuItem("Save As..")) {}
+  // ***** File System Helpers ***** //
+  // void save_session(const std::string session_name)
+  // {
+  //   conduit::Node session;
+  //   session["dataset/file"] = m_dataset_file;
+  //   session["dataset/field_index"] = m_active_field_idx;
 
-    ImGui::Separator();
-    if (ImGui::BeginMenu("Options"))
-    {
-      static bool enabled = true;
-      ImGui::MenuItem("Enabled", "", &enabled);
-      ImGui::BeginChild("child", ImVec2(0, 60), true);
-      for (int i = 0; i < 10; i++) ImGui::Text("Scrolling Text %d", i);
-      ImGui::EndChild();
-      static float f = 0.5f;
-      static int n = 0;
-      ImGui::SliderFloat("Value", &f, 0.0f, 1.0f);
-      ImGui::InputFloat("Input", &f, 0.1f);
-      ImGui::Combo("Combo", &n, "Yes\0No\0Maybe\0\0");
-      ImGui::EndMenu();
-    }
+  //   m_render_window.serialize(session["renderer"]);
+  //   session.save(session_name);
+  // }
 
-    if (ImGui::BeginMenu("Colors"))
-    {
-      float sz = ImGui::GetTextLineHeight();
-      for (int i = 0; i < ImGuiCol_COUNT; i++)
-      {
-        const char* name = ImGui::GetStyleColorName((ImGuiCol)i);
-        ImVec2 p = ImGui::GetCursorScreenPos();
-        ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + sz, p.y + sz), ImGui::GetColorU32((ImGuiCol)i));
-        ImGui::Dummy(ImVec2(sz, sz));
-        ImGui::SameLine();
-        ImGui::MenuItem(name);
-      }
-      ImGui::EndMenu();
-    }
+  // void load_session(const std::string session_name)
+  // {
+  //   conduit::Node session;
+  //   session.load(session_name);
 
-    // Here we demonstrate appending again to the "Options" menu (which we already created above)
-    // Of course in this demo it is a little bit silly that this function calls BeginMenu("Options") twice.
-    // In a real code-base using it would make senses to use this feature from very different code locations.
-    if (ImGui::BeginMenu("Options")) // <-- Append!
-    {
-      static bool b = true;
-      ImGui::Checkbox("SomeOption", &b);
-      ImGui::EndMenu();
-    }
+  //   std::string file = session["dataset/file"].as_string();
+  //   int active_field = session["dataset/field_index"].to_int32();
 
-    if (ImGui::BeginMenu("Disabled", false)) // Disabled
-    {
-      IM_ASSERT(0);
-    }
-    if (ImGui::MenuItem("Checked", NULL, true)) {}
-    if (ImGui::MenuItem("Quit", "Alt+F4")) {}
-  }
+  //   load_dataset(file, active_field);
+
+  //   m_render_window.deserialize(session["renderer"]);
+  // }
+
+  // void load_dataset(std::string file, int field_index = 0)
+  // {
+  //   m_dataset = DataSetReader::load_dataset(file);
+  //   m_dataset_file = file;
+  //   m_active_field_idx = field_index;
+  //   m_render_window.set_data(m_dataset,
+  //                            m_dataset.GetField(m_active_field_idx).GetName(),
+  //                            m_dataset_file);
+  //   m_histogram.build(m_dataset, m_active_field_idx, 256);
+  //   m_bounds = m_dataset.GetCoordinateSystem().GetBounds();
+  //   m_scalar_range = m_dataset.GetField(m_active_field_idx).GetRange().GetPortalConstControl().Get(0);
+  //   m_render_window.set_histogram(m_histogram);
+  // }
 };
 #endif

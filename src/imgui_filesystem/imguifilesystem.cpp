@@ -2704,7 +2704,7 @@ const char* ChooseFileMainMethod(Dialog& ist,const char* directory,const bool _i
         float lastTwoButtonsWidth = 0;
         ImGui::PushID(&id);
         if (isSaveFileDialog)   {
-            ImGui::AlignFirstTextHeightToWidgets();
+            ImGui::AlignTextToFramePadding();
             ImGui::Text("File:");ImGui::SameLine();
             lastTwoButtonsWidth = ImGui::CalcTextSize("Save Cancel").x+2.0f*(style.FramePadding.x+style.ItemSpacing.x)+style.WindowPadding.x;
             ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth()-lastTwoButtonsWidth);
@@ -2714,7 +2714,7 @@ const char* ChooseFileMainMethod(Dialog& ist,const char* directory,const bool _i
             ImGui::SameLine();
         }
         else {
-            ImGui::AlignFirstTextHeightToWidgets();
+            ImGui::AlignTextToFramePadding();
 
             static const ImVec4 sf(1.0,0.8,0.5,1);      // selected folder color factor
             ImVec4& c = ColorSet[Internal::ImGuiCol_Dialog_SelectedFolder_Text];
