@@ -118,6 +118,8 @@ protected:
 
   // For imGuIZMO, declare static or global variable or member class quaternion
   quat qRot = quat(1.f, 0.f, 0.f, 0.f);
+  mat4 modelMatrix = mat4_cast(qRot);
+  dray::Camera initial_camera;
   // two helper functions, not really necessary (but comfortable)
   void setRotation(const quat &q) { qRot = q; }
   quat& getRotation() { return qRot; }
@@ -137,6 +139,7 @@ public:
     glGenTextures(1, &textureID);
     update_render_dims();
     m_camera.reset_to_bounds(m_render_service.bounds());
+    initial_camera = m_camera;
   }
 
   void render_controls()
@@ -308,39 +311,59 @@ public:
       {  
         setRotation(qt); 
 
-        mat4 modelMatrix = mat4_cast(qt);
-        // Now you have a vgMath mat4 modelMatrix with rotation then can build MV and MVP matrix. To translate mat4 into dray::Matrix<float, 4, 4>: 
-        //  The dray::Matrix is made of 4 dray::Vec<T,4> vectors. The mat4 matrix is made of 4 vgMath Vec4 vectors.
-        //  Assign the row-column data for the rotation matrix based on the corresponding row-column of the modelMatrix.
-        // TODO: look for the cast function in vgm from mat4 to quat.
-        dray::Matrix<float, 4, 4> rotate;
-        for (int i = 0; i < 4; ++i)
-        {
-          for (int j = 0; j < 4; ++j)
+        // // If the modelMatrix has changed, then a rotation has occured.
+        // bool r = false;
+        // for (int i = 0; i < 4; ++i)
+        // {
+        //   if (r)
+        //   {
+        //     break;
+        //   }
+        //   for (int j = 0; j < 4; ++j)
+        //   {
+        //     if (modelMatrix[i][j] != mat4_cast(qt)[i][j]) 
+        //     {
+        //       r = true;
+        //       break;
+        //     }
+        //   }
+        // }
+        // if (r)
+        // {
+          // Now you have a vgMath mat4 modelMatrix with rotation then can build MV and MVP matrix. To translate mat4 into dray::Matrix<float, 4, 4>: 
+          //  The dray::Matrix is made of 4 dray::Vec<T,4> vectors. The mat4 matrix is made of 4 vgMath Vec4 vectors.
+          //  Assign the row-column data for the rotation matrix based on the corresponding row-column of the modelMatrix.
+          // TODO: look for the cast function in vgm from mat4 to quat.
+
+          mat4 delta_rotation = transpose(modelMatrix) * mat4_cast(qt);
+          dray::Matrix<float, 4, 4> rotate;
+          for (int i = 0; i < 4; ++i)
           {
-            rotate[i][j] = modelMatrix[i][j];     
+            for (int j = 0; j < 4; ++j)
+            {
+              rotate[i][j] = delta_rotation[i][j];     
+            }
           }
-        }
 
-        dray::Matrix<float, 4, 4> trans = translate (-m_camera.get_look_at());
-        dray::Matrix<float, 4, 4> inv_trans = translate (m_camera.get_look_at());
+          dray::Matrix<float, 4, 4> trans = translate (-m_camera.get_look_at());
+          dray::Matrix<float, 4, 4> inv_trans = translate (m_camera.get_look_at());
 
-        dray::Matrix<float, 4, 4> view = m_camera.view_matrix ();
-        view (0, 3) = 0;
-        view (1, 3) = 0;
-        view (2, 3) = 0;
+          dray::Matrix<float, 4, 4> view = m_camera.view_matrix ();
+          view (0, 3) = 0;
+          view (1, 3) = 0;
+          view (2, 3) = 0;
 
-        dray::Matrix<float, 4, 4> inverseView = view.transpose ();
+          dray::Matrix<float, 4, 4> inverseView = view.transpose ();
 
-        dray::Matrix<float, 4, 4> full_transform = inv_trans * inverseView * rotate * view * trans;
+          dray::Matrix<float, 4, 4> full_transform = inv_trans * inverseView * rotate * view * trans;
 
-        m_camera.set_pos(transform_point (full_transform, m_camera.get_pos()));
-        m_camera.set_look_at(transform_point (full_transform, m_camera.get_look_at()));
-        m_camera.set_up(transform_vector (full_transform, m_camera.get_up()));
+          m_camera.set_pos(transform_point (full_transform, m_camera.get_pos()));
+          m_camera.set_look_at(transform_point (full_transform, m_camera.get_look_at()));
+          m_camera.set_up(transform_vector (full_transform, m_camera.get_up()));
 
-        setRotation(quat(1.f, 0.f, 0.f, 0.f));
+          modelMatrix = mat4_cast(qt);
+        // }
       }
-      
     }
 
     // TODO: color picker
