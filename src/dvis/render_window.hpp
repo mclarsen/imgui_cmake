@@ -276,23 +276,48 @@ public:
     /********** CAMERA CONTROLS ***********/
     if (ImGui::CollapsingHeader("Camera"))
     {
-      // ***** Camera Position *****:
-      dray::Vec<float, 3> cam_pos = m_camera.get_pos();
-      static float vec3f[3] = { 0.0f, 0.0f, 0.0f };
-      vec3f[0] = cam_pos[0];
-      vec3f[1] = cam_pos[1];
-      vec3f[2] = cam_pos[2];
-      ImGui::DragFloat3("Camera Position", vec3f, 0.1f, -10.0f, 10.0f);
-      cam_pos[0] = vec3f[0];
-      cam_pos[1] = vec3f[1];
-      cam_pos[2] = vec3f[2];
-      m_camera.set_pos(cam_pos);
-
       // ***** Reset Camera Position *****:
       if (ImGui::Button("Reset Camera"))
       {
         m_camera.reset_to_bounds(m_render_service.bounds());
       }
+
+      // TODO: Do any of these need to be normalized? Normalize if necessary.
+      // ***** Camera Position *****:
+      dray::Vec<float, 3> cam_pos = m_camera.get_pos();
+      static float vec3f_cam_pos[3] = { 0.0f, 0.0f, 0.0f };
+      vec3f_cam_pos[0] = cam_pos[0];
+      vec3f_cam_pos[1] = cam_pos[1];
+      vec3f_cam_pos[2] = cam_pos[2];
+      ImGui::DragFloat3("Camera Position", vec3f_cam_pos, 0.1f, -10.0f, 10.0f);
+      cam_pos[0] = vec3f_cam_pos[0];
+      cam_pos[1] = vec3f_cam_pos[1];
+      cam_pos[2] = vec3f_cam_pos[2];
+      m_camera.set_pos(cam_pos);
+
+      // ***** Camera Look At *****:
+      dray::Vec<float, 3> cam_look_at = m_camera.get_look_at();
+      static float vec3f_cam_look_at[3] = { 0.0f, 0.0f, 0.0f };
+      vec3f_cam_look_at[0] = cam_look_at[0];
+      vec3f_cam_look_at[1] = cam_look_at[1];
+      vec3f_cam_look_at[2] = cam_look_at[2];
+      ImGui::DragFloat3("Camera Look At", vec3f_cam_look_at, 0.1f, -10.0f, 10.0f);
+      cam_look_at[0] = vec3f_cam_look_at[0];
+      cam_look_at[1] = vec3f_cam_look_at[1];
+      cam_look_at[2] = vec3f_cam_look_at[2];
+      m_camera.set_look_at(cam_look_at);
+
+      // ***** Camera Up *****:
+      dray::Vec<float, 3> cam_up = m_camera.get_up();
+      static float vec3f_cam_up[3] = { 0.0f, 0.0f, 0.0f };
+      vec3f_cam_up[0] = cam_up[0];
+      vec3f_cam_up[1] = cam_up[1];
+      vec3f_cam_up[2] = cam_up[2];
+      ImGui::DragFloat3("Camera Up", vec3f_cam_up, 0.1f, -10.0f, 10.0f);
+      cam_up[0] = vec3f_cam_up[0];
+      cam_up[1] = vec3f_cam_up[1];
+      cam_up[2] = vec3f_cam_up[2];
+      m_camera.set_up(cam_up);
 
       // ***** Camera Zoom *****:
       static float zoom = 1.0f;
@@ -307,35 +332,40 @@ public:
 
       // ***** imGuIZMO *****:
       quat qt = getRotation();
+      // TODO: Rotate guizmo to match the camera.
+      // Pseudocode:
+          // dray::Matrix<float, 4, 4> inv_trans_pos = translate (m_camera.get_pos());
+          // new_gizmo_orientation = inv_trans_pos * view
       if(ImGui::gizmo3D("##gizmo1", qt, 240 /*,  mode */)) 
       {  
         setRotation(qt); 
 
-        // // If the modelMatrix has changed, then a rotation has occured.
-        // bool r = false;
-        // for (int i = 0; i < 4; ++i)
-        // {
-        //   if (r)
-        //   {
-        //     break;
-        //   }
-        //   for (int j = 0; j < 4; ++j)
-        //   {
-        //     if (modelMatrix[i][j] != mat4_cast(qt)[i][j]) 
-        //     {
-        //       r = true;
-        //       break;
-        //     }
-        //   }
-        // }
-        // if (r)
-        // {
+        // If the modelMatrix has changed, then a rotation has occured.
+        bool r = false;
+        for (int i = 0; i < 4; ++i)
+        {
+          if (r)
+          {
+            break;
+          }
+          for (int j = 0; j < 4; ++j)
+          {
+            if (modelMatrix[i][j] != mat4_cast(qt)[i][j]) 
+            {
+              r = true;
+              break;
+            }
+          }
+        }
+        if (r)
+        {
           // Now you have a vgMath mat4 modelMatrix with rotation then can build MV and MVP matrix. To translate mat4 into dray::Matrix<float, 4, 4>: 
           //  The dray::Matrix is made of 4 dray::Vec<T,4> vectors. The mat4 matrix is made of 4 vgMath Vec4 vectors.
           //  Assign the row-column data for the rotation matrix based on the corresponding row-column of the modelMatrix.
           // TODO: look for the cast function in vgm from mat4 to quat.
 
           mat4 delta_rotation = transpose(modelMatrix) * mat4_cast(qt);
+          // mat4 delta_rotation = mat4_cast(qt); // DEBUG: This doesn't solve the issue, it still spins opposite in the x-z plane.
           dray::Matrix<float, 4, 4> rotate;
           for (int i = 0; i < 4; ++i)
           {
@@ -362,7 +392,7 @@ public:
           m_camera.set_up(transform_vector (full_transform, m_camera.get_up()));
 
           modelMatrix = mat4_cast(qt);
-        // }
+        }
       }
     }
 
@@ -496,8 +526,8 @@ public:
     // since I can associate the texture id with the button
     ImGui::ImageButton((void*)(intptr_t)textureID,
                        ImVec2(m_width , m_height),
-                       ImVec2(0,0),
-                       ImVec2(1,1),
+                       ImVec2(0,1),
+                       ImVec2(1,0),
                        0);
     // this works but the mouse movements are screwed up
     //ImGui::GetWindowDrawList()->AddImage(
