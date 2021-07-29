@@ -333,9 +333,6 @@ public:
       // ***** imGuIZMO *****:
       quat qt = getRotation();
       // TODO: Rotate guizmo to match the camera.
-      // Pseudocode:
-          // dray::Matrix<float, 4, 4> inv_trans_pos = translate (m_camera.get_pos());
-          // new_gizmo_orientation = inv_trans_pos * view
       if(ImGui::gizmo3D("##gizmo1", qt, 240 /*,  mode */)) 
       {  
         setRotation(qt); 
@@ -365,7 +362,6 @@ public:
           // TODO: look for the cast function in vgm from mat4 to quat.
 
           mat4 delta_rotation = transpose(modelMatrix) * mat4_cast(qt);
-          // mat4 delta_rotation = mat4_cast(qt); // DEBUG: This doesn't solve the issue, it still spins opposite in the x-z plane.
           dray::Matrix<float, 4, 4> rotate;
           for (int i = 0; i < 4; ++i)
           {
@@ -392,6 +388,28 @@ public:
           m_camera.set_up(transform_vector (full_transform, m_camera.get_up()));
 
           modelMatrix = mat4_cast(qt);
+        }
+      } else {
+        // Rotate ImGuizmo
+        rotate_guizmo();
+      }
+      // ***** DEBUG Guizmo *****:
+      if (ImGui::Button("Test Quat"))
+      {
+        //DEBUG
+        // Determine if mat4 to quat then quat to mat4 are equivalent.
+        mat4 mat4_test_before = mat4_cast(qt);
+        quat q_test = matrix_to_quat(mat4_test_before);
+        mat4 mat4_test_after = mat4_cast(q_test);
+        std::cout << "\nIs mat4_test_before equivalent to mat4_test_after?\n";
+        for (int i = 0; i < 4; ++i)
+        {
+          std::cout << "Row: " << i << "\n";
+          for (int j = 0; j < 4; ++j)
+          {
+            std::cout << "mat4_test_before[" << i << "][" << j << "]: " << mat4_test_before[i][j] 
+              << ", vs new_gizmo_orientation[[" << i << "][" << j << "]: " << mat4_test_after[i][j] << "\n";
+          }
         }
       }
     }
@@ -577,6 +595,71 @@ public:
     render_controls();
   }
 
+  // Source:  
+  quat matrix_to_quat(mat4 m)
+  {
+    quat q;
+    // TODO: Swap Row i with column j
+    float trace = m[0][0] + m[1][1] + m[2][2]; 
+    if( trace > 0 ) {
+      float s = 0.5f / sqrtf(trace+ 1.0f);
+      q.w = 0.25f / s;
+      q.x = ( m[1][2] - m[2][1] ) * s;
+      q.y = ( m[2][0] - m[0][2] ) * s;
+      q.z = ( m[0][1] - m[1][0] ) * s;
+    } else {
+      if ( m[0][0] > m[1][1] && m[0][0] > m[2][2] ) {
+        float s = 2.0f * sqrtf( 1.0f + m[0][0] - m[1][1] - m[2][2]);
+        q.w = (m[1][2] - m[2][1] ) / s;
+        q.x = 0.25f * s;
+        q.y = (m[1][0] + m[0][1] ) / s;
+        q.z = (m[2][0] + m[0][2] ) / s;
+      } else if (m[1][1] > m[2][2]) {
+        float s = 2.0f * sqrtf( 1.0f + m[1][1] - m[0][0] - m[2][2]);
+        q.w = (m[2][0] - m[0][2] ) / s;
+        q.x = (m[1][0] + m[0][1] ) / s;
+        q.y = 0.25f * s;
+        q.z = (m[2][1] + m[1][2] ) / s;
+      } else {
+        float s = 2.0f * sqrtf( 1.0f + m[2][2] - m[0][0] - m[1][1] );
+        q.w = (m[0][1] - m[1][0] ) / s;
+        q.x = (m[2][0] + m[0][2] ) / s;
+        q.y = (m[2][1] + m[1][2] ) / s;
+        q.z = 0.25f * s;
+      }
+    }
+
+    return q;
+  }
+
+  void rotate_guizmo()
+  {
+    // Get the view matrix and the inverse translation for the camera.
+    dray::Matrix<float, 4, 4> trans = translate (-m_camera.get_look_at());    
+    dray::Matrix<float, 4, 4> inv_trans = translate (m_camera.get_look_at());
+    dray::Matrix<float, 4, 4> view = m_camera.view_matrix ();
+    view (0, 3) = 0;
+    view (1, 3) = 0;
+    view (2, 3) = 0;
+
+    // Matrix math to obtain the orientation of the camera which can be used to set the guizmo.
+    dray::Matrix<float, 4, 4> new_gizmo_orientation = inv_trans * view;
+
+    // Set the guizmo modelMatrix.
+    for (int i = 0; i < 4; ++i)
+    {
+      for (int j = 0; j < 4; ++j)
+      {
+        modelMatrix[i][j] = new_gizmo_orientation[i][j];     
+      }
+    }
+
+    // Convert the modelMatrix into a quaternion. 
+    quat q = matrix_to_quat(modelMatrix);
+    
+    setRotation(q);
+  }
+
   void handle_mouse(const ImVec2 &canvas_pos)
   {
     static int x_last = -1;
@@ -596,6 +679,8 @@ public:
       ImVec2 mouse_pos = ImGui::GetMousePos();
       if(x_last != -1 && y_last != -1)
       {
+        // int x_diff = x_last - mouse_pos.x;
+        // int y_diff = y_last - mouse_pos.y;
         int x_diff = mouse_pos.x - x_last;
         int y_diff = mouse_pos.y - y_last;
         if(x_diff != 0 && y_diff != 0)
@@ -604,12 +689,12 @@ public:
           float y1 = float(y_last * 2) / float(m_height) - 1.0f;
           float x2 = float(mouse_pos.x * 2) / float(m_width) - 1.0f;
           float y2 = float(mouse_pos.y * 2) / float(m_height) - 1.0f;
-          m_camera.trackball_rotate(x1, y1, x2, y2);
+          m_camera.trackball_rotate(x1 , y1, x2, y2);
+
         }
       }
       x_last = mouse_pos.x;
       y_last = mouse_pos.y;
-
     }
 
     if(ImGui::IsMouseReleased(0))
