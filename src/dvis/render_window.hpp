@@ -445,45 +445,138 @@ public:
       }
       if (ImGui::BeginPopup("mypicker"))
       {
-          ImGui::Text("MY CUSTOM COLOR PICKER WITH AN AMAZING PALETTE!");
-          ImGui::Separator();
-          ImGui::ColorPicker4("##picker", (float*)&color);
-          ImGui::SameLine();
+        ImGui::Text("MY CUSTOM COLOR PICKER WITH AN AMAZING PALETTE!");
+        ImGui::Separator();
+        ImGui::ColorPicker4("##picker", (float*)&color);
+        ImGui::SameLine();
 
-          ImGui::BeginGroup(); // Lock X position
-          ImGui::Text("Current");
-          ImGui::ColorButton("##current", color, ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_AlphaPreviewHalf, ImVec2(60, 40));
-          ImGui::Text("Previous");
-          if (ImGui::ColorButton("##previous", backup_color, ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_AlphaPreviewHalf, ImVec2(60, 40)))
-              color = backup_color;
-          ImGui::Separator();
-          ImGui::Text("Palette");
-          for (int n = 0; n < IM_ARRAYSIZE(saved_palette); n++)
+        ImGui::BeginGroup(); // Lock X position
+        ImGui::Text("Current");
+        ImGui::ColorButton("##current", color, ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_AlphaPreviewHalf, ImVec2(60, 40));
+        ImGui::Text("Previous");
+        if (ImGui::ColorButton("##previous", backup_color, ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_AlphaPreviewHalf, ImVec2(60, 40)))
+          color = backup_color;
+        ImGui::Separator();
+        ImGui::Text("Palette");
+        for (int n = 0; n < IM_ARRAYSIZE(saved_palette); n++)
+        {
+          ImGui::PushID(n);
+          if ((n % 8) != 0)
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemSpacing.y);
+
+          ImGuiColorEditFlags palette_button_flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoTooltip;
+          if (ImGui::ColorButton("##palette", saved_palette[n], palette_button_flags, ImVec2(20, 20)))
+            color = ImVec4(saved_palette[n].x, saved_palette[n].y, saved_palette[n].z, color.w); // Preserve alpha!
+
+          // Allow user to drop colors into each palette entry. Note that ColorButton() is already a
+          // drag source by default, unless specifying the ImGuiColorEditFlags_NoDragDrop flag.
+          if (ImGui::BeginDragDropTarget())
           {
-              ImGui::PushID(n);
-              if ((n % 8) != 0)
-                  ImGui::SameLine(0.0f, ImGui::GetStyle().ItemSpacing.y);
-
-              ImGuiColorEditFlags palette_button_flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoTooltip;
-              if (ImGui::ColorButton("##palette", saved_palette[n], palette_button_flags, ImVec2(20, 20)))
-                  color = ImVec4(saved_palette[n].x, saved_palette[n].y, saved_palette[n].z, color.w); // Preserve alpha!
-
-              // Allow user to drop colors into each palette entry. Note that ColorButton() is already a
-              // drag source by default, unless specifying the ImGuiColorEditFlags_NoDragDrop flag.
-              if (ImGui::BeginDragDropTarget())
-              {
-                  if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_3F))
-                      memcpy((float*)&saved_palette[n], payload->Data, sizeof(float) * 3);
-                  if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_4F))
-                      memcpy((float*)&saved_palette[n], payload->Data, sizeof(float) * 4);
-                  ImGui::EndDragDropTarget();
-              }
-
-              ImGui::PopID();
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_3F))
+              memcpy((float*)&saved_palette[n], payload->Data, sizeof(float) * 3);
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_4F))
+              memcpy((float*)&saved_palette[n], payload->Data, sizeof(float) * 4);
+            ImGui::EndDragDropTarget();
           }
-          ImGui::EndGroup();
-          ImGui::EndPopup();
+
+          ImGui::PopID();
+        }
+        ImGui::EndGroup();
+        ImGui::EndPopup();
       }
+    }
+
+    // TODO: Transfer Function Window
+    /********** TRANSFER FUNCTIONS ***********/
+    if (ImGui::CollapsingHeader("Transfer Functions"))
+    {
+      if (ImGui::Button("Transfer Function Popup"))
+      {
+        ImGui::OpenPopup("Transfer Function Popup");  
+      }
+      if (ImGui::BeginPopup("Transfer Function Popup"))
+      {
+        // ***** Transfer Function Popup *****:
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        
+        ImGui::Text("Transfer Function Popup!");
+
+        dray::ColorTable my_bar("blue");
+        dray::Array<dray::Vec<float, 4>> color_map;
+        my_bar.sample(512, color_map);
+        dray::Vec<float,4> *color_ptr = color_map.get_host_ptr();
+
+        // Draw a Rectangle
+        draw_list->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(100, 100, 100, 100));
+
+        if (ImGui::Button("Test Button"))
+        {
+          std::cout << "Transfer Function Popup Test Button, tested\n";
+        }
+
+        // Draw a Rectangle
+        draw_list->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(255, 0, 255, 100));
+
+        // Draw a Rectangle
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImVec2 marker_min = ImVec2(pos.x, pos.y);
+        ImVec2 marker_max = ImVec2(pos.x + 10, pos.y + ImGui::GetTextLineHeight());
+        draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(200, 200, 200, 200));
+
+        ImGui::EndPopup();
+      }
+      // if (ImGui::Button("Transfer Function Window"))
+      // {
+      //   bool show_transfer_function = true;
+      //   render_transfer_function(&show_transfer_function);
+      // }
+
+      // ***** Transfer Function *****:
+      ImDrawList* draw_list = ImGui::GetWindowDrawList();
+      
+      ImGui::Text("Transfer Function!");
+
+      dray::ColorTable my_bar("blue");
+      dray::Array<dray::Vec<float, 4>> color_map;
+      my_bar.sample(512, color_map);
+      dray::Vec<float,4> *color_ptr = color_map.get_host_ptr();
+
+      // Draw a Rectangle: Draws rectangle around the last item.
+      draw_list->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(100, 100, 100, 100));
+
+      if (ImGui::Button("Test Button"))
+      {
+        std::cout << "Transfer Function Test Button, tested\n";
+        std::cout << "What's in Color Map?";
+        my_bar.print();
+      }
+
+      // Draw a Rectangle: Again, draw a rectangle around the last item. 
+      draw_list->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(0, 255, 255, 100));
+
+      // Draw a Rectangle: Use Get and Set CursorScreenPos to control where rectangle is drawn.
+      float tf_width = 200;
+      ImVec2 pos = ImGui::GetCursorScreenPos();
+      ImVec2 marker_min = ImVec2(pos.x, pos.y);
+      ImVec2 marker_max = ImVec2(pos.x + tf_width, pos.y + ImGui::GetTextLineHeight());
+      draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(200, 200, 200, 200));
+      ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + ImGui::GetTextLineHeight()));
+
+      // Draw Rectangle: Gradient the rectangle based on the color_map.
+      // For every item in the color_map...
+      pos = ImGui::GetCursorScreenPos();
+      float tf_height = 50;
+      int cm_length = color_map.size();
+      for (int i = 0; i < cm_length; i++)
+      {
+        // Draw a rectangle 1 pixel wide of a color based on the ith index of color_map.
+        marker_min = ImVec2(pos.x + i, pos.y);
+        marker_max = ImVec2(pos.x + i + 1, pos.y + tf_height);
+        draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(color_map.get_value(i)[0] * 255, color_map.get_value(i)[1] * 255,
+                                                                  color_map.get_value(i)[2] * 255, color_map.get_value(i)[3] * 255));
+      }
+      ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + tf_height));
+
     }
 
     // TODO: field list
@@ -495,6 +588,29 @@ public:
 
     ImGui::End();
   }
+
+  // // ***** Transfer Function Window *****:
+  // void render_transfer_function(bool *p_open)
+  // {
+  //   // Window for handling all transfer function Controls.
+  //   ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiCond_FirstUseEver);
+
+  //   if (!ImGui::Begin("Transfer Function", p_open, ImGuiWindowFlags_MenuBar))
+  //   {
+  //       // Early out if the window is collapsed, as an optimization.
+  //       ImGui::End();
+  //       return;
+  //   }
+
+  //   ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    
+  //   ImGui::Text("Transfer Function Window!");
+
+  //   // Draw a Rectangle
+  //   draw_list->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(100, 100, 100, 100));
+
+  //   ImGui::End();
+  // }
 
   // this is a dummy framebuffer
   void update_render_dims()
