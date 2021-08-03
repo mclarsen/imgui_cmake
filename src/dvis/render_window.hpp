@@ -562,21 +562,103 @@ public:
       draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(200, 200, 200, 200));
       ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + ImGui::GetTextLineHeight()));
 
-      // Draw Rectangle: Gradient the rectangle based on the color_map.
-      // For every item in the color_map...
-      pos = ImGui::GetCursorScreenPos();
-      float tf_height = 50;
-      int cm_length = color_map.size();
-      for (int i = 0; i < cm_length; i++)
+      ImGui::BeginGroup();
       {
-        // Draw a rectangle 1 pixel wide of a color based on the ith index of color_map.
-        marker_min = ImVec2(pos.x + i, pos.y);
-        marker_max = ImVec2(pos.x + i + 1, pos.y + tf_height);
-        draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(color_map.get_value(i)[0] * 255, color_map.get_value(i)[1] * 255,
-                                                                  color_map.get_value(i)[2] * 255, color_map.get_value(i)[3] * 255));
-      }
-      ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + tf_height));
+        // Draw Rectangle: Gradient the rectangle based on the color_map.
+        // For every item in the color_map...
+        pos = ImGui::GetCursorScreenPos();
+        float tf_height = 50;
+        int cm_length = color_map.size();
+        for (int i = 0; i < cm_length; i++)
+        {
+          // Draw a rectangle 1 pixel wide of a color based on the ith index of color_map.
+          marker_min = ImVec2(pos.x + i, pos.y);
+          marker_max = ImVec2(pos.x + i + 1, pos.y + tf_height);
+          draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(color_map.get_value(i)[0] * 255, color_map.get_value(i)[1] * 255,
+                                                                    color_map.get_value(i)[2] * 255, color_map.get_value(i)[3] * 255));
+        }
 
+        // Draw Histogram. This uses the built in ImGui::PlotHistogram
+        ImVec2 size = ImVec2(cm_length, tf_height); //pos.x, pos.y);
+        const float values[5] = { 0.5f, 0.20f, 0.80f, 0.60f, 0.25f };
+        ImGui::PlotHistogram("##values", values, IM_ARRAYSIZE(values), 0, NULL, 0.0f, 1.0f, size);
+        ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + tf_height));
+      }
+      ImGui::EndGroup();
+
+      ImGui::BeginGroup();
+      {
+        dray::ColorTable my_bar("temperature");
+        my_bar.sample(512, color_map);
+        color_ptr = color_map.get_host_ptr();
+        // Draw Rectangle: Gradient the rectangle based on the color_map.
+        // For every item in the color_map...
+        pos = ImGui::GetCursorScreenPos();
+        float tf_height = 50;
+        int cm_length = color_map.size();
+        for (int i = 0; i < cm_length; i++)
+        {
+          // Draw a rectangle 1 pixel wide of a color based on the ith index of color_map.
+          marker_min = ImVec2(pos.x + i, pos.y);
+          marker_max = ImVec2(pos.x + i + 1, pos.y + tf_height);
+          draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(color_map.get_value(i)[0] * 255, color_map.get_value(i)[1] * 255,
+                                                                    color_map.get_value(i)[2] * 255, color_map.get_value(i)[3] * 255));
+        }
+
+        // Draw Histogram. Manually. For every bin in the array of values...
+        const float values[5] = { 0.5f, 0.20f, 0.80f, 0.60f, 0.25f };
+        float max_value = *max_element(begin(values), end(values));
+        int bins = sizeof(values)/sizeof(values[0]);
+        float bin_width = 512 / bins;
+        float bin_height = tf_height;
+        float bin_offset = 0;
+        for (int i = 0; i < bins; i++)
+        {
+          bin_height = tf_height * (values[i] / max_value);
+          bin_offset = tf_height * (1 - values[i] / max_value);
+          marker_min = ImVec2(pos.x + i * bin_width, pos.y - bin_offset);
+          marker_max = ImVec2(pos.x + (i + 1) * bin_width, pos.y + bin_height - bin_offset);
+          draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(200, 200, 200, 100));
+        }
+
+        // // Draw Histogram. This uses the implot. Sample Histogram taken from implot_demo.cpp
+        // if (ImPlot::BeginPlot("##Histograms")) 
+        // {
+        //   static int  bins       = 50;
+        //   static bool cumulative = false;
+        //   static bool density    = true;
+        //   static bool outliers   = true;
+        //   static bool range      = false;
+        //   static double mu       = 5;
+        //   static double sigma    = 2;
+        //   //static ImPlot::NormalDistribution<10000> dist(mu, sigma);
+        //   const float values[5] = { 0.5f, 0.20f, 0.80f, 0.60f, 0.25f };
+        //   static double x[100];
+        //   static double y[100];
+        //   if (density) {
+        //       for (int i = 0; i < 100; ++i) {
+        //           x[i] = -3 + 16 * (double)i/99.0;
+        //           y[i] = exp( - (x[i]-mu)*(x[i]-mu) / (2*sigma*sigma)) / (sigma * sqrt(2*3.141592653589793238));
+        //       }
+        //       if (cumulative) {
+        //           for (int i = 1; i < 100; ++i)
+        //               y[i] += y[i-1];
+        //           for (int i = 0; i < 100; ++i)
+        //               y[i] /= y[99];
+        //       }
+        //   }
+        //   static float rmin = -3;
+        //   static float rmax = 13;
+
+        //   ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
+        //   ImPlot::PlotHistogram("Empirical", values, 10000, bins, cumulative, density, range ? ImPlotRange(rmin,rmax) : ImPlotRange(), outliers);
+        //   if (density && outliers)
+        //       ImPlot::PlotLine("Theoretical",x,y,100);
+        //   ImPlot::EndPlot();
+        // }
+        ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + tf_height));
+      }
+      ImGui::EndGroup();
     }
 
     // TODO: field list

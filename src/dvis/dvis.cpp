@@ -3,6 +3,7 @@
 
 
 #include <imgui.h>
+#include <implot.h>
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl2.h>
@@ -35,6 +36,7 @@ int main(int, char**)
   // Setup ImGui context
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+  ImPlot::CreateContext();
   ImGuiIO& io = ImGui::GetIO(); (void)io;
 
   ImGui::StyleColorsDark();
@@ -58,6 +60,7 @@ int main(int, char**)
 
     bool show_demo = true;
     ImGui::ShowDemoWindow(&show_demo);
+    ImPlot::ShowDemoWindow(&show_demo);
     render_window.render();
 
     // Rendering
@@ -76,6 +79,7 @@ int main(int, char**)
   // Cleanup
   ImGui_ImplOpenGL2_Shutdown();
   ImGui_ImplGlfw_Shutdown();
+  ImPlot::DestroyContext();
   ImGui::DestroyContext();
 
   glfwDestroyWindow(window);
