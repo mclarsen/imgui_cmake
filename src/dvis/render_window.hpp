@@ -622,33 +622,31 @@ public:
         if (tf_mouse_pos.x >= pos.x && tf_mouse_pos.x <= pos.x + tf_rect_width &&
             tf_mouse_pos.y >= pos.y && tf_mouse_pos.y <= pos.y + tf_rect_height && tf_mouse_down) 
         { 
-          std::cout << "Mouse position: " << tf_mouse_pos.x << ", " << tf_mouse_pos.y << "]|[";
           // Prevent the window from being dragged.
           io.ConfigWindowsMoveFromTitleBarOnly = true;
           // Set tf_alphas values based on the clicked mouse position, including any distance dragged through this frame.
           int alpha_index = tf_mouse_pos.x - pos.x;
-          std::cout << "alpha_index: " << alpha_index << "]|[" << "delta_mouse_drag.x: " << delta_mouse_drag.x << "\n";
           if (delta_mouse_drag.x > 0) 
           {
-            for (int i = alpha_index; i <= alpha_index + delta_mouse_drag.x; i++)
+            for (int i = alpha_index - delta_mouse_drag.x; i <= alpha_index; i++)
             {
               if ((delta_mouse_drag.x + tf_mouse_pos.x >= pos.x) && (delta_mouse_drag.x + tf_mouse_pos.x <= pos.x + tf_rect_width) &&
                   (delta_mouse_drag.y + tf_mouse_pos.y >= pos.y) && (delta_mouse_drag.y + tf_mouse_pos.y <= pos.y + tf_rect_height))
               {
                 //TODO: Fix choppy drawing AKA why are there skipped indicies in the drawing?
-                tf_alphas[i] = io.MousePos.y - pos.y + ((i - alpha_index) / delta_mouse_drag.x)*(delta_mouse_drag.y);
+                tf_alphas[i] = io.MousePos.y - pos.y + ((i - alpha_index + delta_mouse_drag.x) / delta_mouse_drag.x)*(delta_mouse_drag.y);
               }
             }
             mouse_drag = ImGui::GetMouseDragDelta(0, 0.0f);
           } 
           else if (delta_mouse_drag.x < 0)
           {
-            for (int i = alpha_index + delta_mouse_drag.x; i <= alpha_index; i++)
+            for (int i = alpha_index; i <= alpha_index - delta_mouse_drag.x; i++)
             {
               if ((delta_mouse_drag.x + tf_mouse_pos.x >= pos.x) && (delta_mouse_drag.x + tf_mouse_pos.x <= pos.x + tf_rect_width) &&
                   (delta_mouse_drag.y + tf_mouse_pos.y >= pos.y) && (delta_mouse_drag.y + tf_mouse_pos.y <= pos.y + tf_rect_height))
               {
-                tf_alphas[i] = io.MousePos.y - pos.y + ((i - alpha_index - delta_mouse_drag.x) / (delta_mouse_drag.x))*(delta_mouse_drag.y);
+                tf_alphas[i] = io.MousePos.y - pos.y + ((i - alpha_index) / (delta_mouse_drag.x))*(delta_mouse_drag.y);
               }
             }
             mouse_drag = ImGui::GetMouseDragDelta(0, 0.0f);
