@@ -123,6 +123,10 @@ protected:
   // two helper functions, not really necessary (but comfortable)
   void setRotation(const quat &q) { qRot = q; }
   quat& getRotation() { return qRot; }
+  // Transfer Function Alphas
+  bool tf_mouse_down = false;
+  float tf_alphas[512] = {};  
+  ImVec2 mouse_drag = ImVec2(0.0f, 0.0f);
 
 public:
   RenderWindow()
@@ -148,10 +152,10 @@ public:
     ImGui::SetNextWindowSize(ImVec2(200, 500), ImGuiCond_FirstUseEver);
     ImGui::Begin("Control Window", NULL, ImGuiWindowFlags_MenuBar);
     ImGuiIO& io = ImGui::GetIO();
-    
+
     bool file_explorer = false;
     bool session_save = false;
-    bool session_load = false; 
+    bool session_load = false;
     /********** MENU BAR ***********/
     if (ImGui::BeginMenuBar())
     {
@@ -536,10 +540,11 @@ public:
       ImDrawList* draw_list = ImGui::GetWindowDrawList();
       
       ImGui::Text("Transfer Function!");
-
+      
+      int tf_rect_width = 512;
       dray::ColorTable my_bar("blue");
       dray::Array<dray::Vec<float, 4>> color_map;
-      my_bar.sample(512, color_map);
+      my_bar.sample(tf_rect_width, color_map);
       dray::Vec<float,4> *color_ptr = color_map.get_host_ptr();
 
       // Draw a Rectangle: Draws rectangle around the last item.
@@ -556,47 +561,22 @@ public:
       draw_list->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(0, 255, 255, 100));
 
       // Draw a Rectangle: Use Get and Set CursorScreenPos to control where rectangle is drawn.
-      int tf_rect_width = 200;
       ImVec2 pos = ImGui::GetCursorScreenPos();
-      ImVec2 marker_min = ImVec2(pos.x, pos.y);
-      ImVec2 marker_max = ImVec2(pos.x + tf_rect_width, pos.y + ImGui::GetTextLineHeight());
-      draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(200, 200, 200, 200));
-      ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + ImGui::GetTextLineHeight()));
+      ImVec2 marker_min;
+      ImVec2 marker_max;
 
       ImGui::BeginGroup();
       {
-        // Draw Rectangle: Gradient the rectangle based on the color_map.
-        // For every item in the color_map...
-        pos = ImGui::GetCursorScreenPos();
-        int tf_rect_height = 50;
-        int cm_length = color_map.size();
-        for (int i = 0; i < cm_length; i++)
-        {
-          // Draw a rectangle 1 pixel wide of a color based on the ith index of color_map.
-          marker_min = ImVec2(pos.x + i, pos.y);
-          marker_max = ImVec2(pos.x + i + 1, pos.y + tf_rect_height);
-          draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(color_map.get_value(i)[0] * 255, color_map.get_value(i)[1] * 255,
-                                                                    color_map.get_value(i)[2] * 255, color_map.get_value(i)[3] * 255));
-        }
-
-        // Draw Histogram. This uses the built in ImGui::PlotHistogram
-        ImVec2 size = ImVec2(cm_length, tf_rect_height); //pos.x, pos.y);
-        const float values[5] = { 0.5f, 0.20f, 0.80f, 0.60f, 0.25f };
-        ImGui::PlotHistogram("##values", values, IM_ARRAYSIZE(values), 0, NULL, 0.0f, 1.0f, size);
-        ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + tf_rect_height));
-      }
-      ImGui::EndGroup();
-
-      ImGui::BeginGroup();
-      {
-        int tf_rect_width = (ImGui::GetWindowWidth() > 100) ? ImGui::GetWindowWidth() : 100; 
+        // TODO: Radial / check box for fixing width instead of relative scaling.
+        //int tf_rect_width = (ImGui::GetWindowWidth() > 100) ? ImGui::GetWindowWidth() : 100; 
+        tf_rect_width = 512;
         dray::ColorTable my_bar("temperature");
         my_bar.sample(tf_rect_width, color_map);
         color_ptr = color_map.get_host_ptr();
         // Draw Rectangle: Gradient the rectangle based on the color_map.
         // For every item in the color_map...
         pos = ImGui::GetCursorScreenPos();
-        int tf_rect_height = 50;
+        int tf_rect_height = 200;
         int cm_length = color_map.size();
         for (int i = 0; i < cm_length; i++)
         {
@@ -624,22 +604,83 @@ public:
         }
 
         // Draw the Transfer Function
-        // If the mouse is clicked within the transfer function rectangle...
-        ImVec2 mouse_tf_pos = io.MousePos;
-        if ((ImGui::IsMouseClicked(ImGuiMouseButton_Left)) && ((mouse_tf_pos.x >= pos.x && mouse_tf_pos.x <= (pos.x + tf_rect_width)) && 
-            (mouse_tf_pos.y >= pos.y && mouse_tf_pos.y <= (pos.y + tf_rect_height))))
+        // Determine if the mouse is clicked within the transfer function rectangle.
+        ImVec2 tf_mouse_pos = io.MousePos;
+        ImVec2 delta_mouse_drag = ImVec2(0.0f, 0.0f);
+        if (tf_mouse_pos.x >= pos.x && tf_mouse_pos.x <= pos.x + tf_rect_width && 
+            tf_mouse_pos.y >= pos.y && tf_mouse_pos.y <= pos.y + tf_rect_height && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-          std::cout << "Mouse position: " << mouse_tf_pos.x << ", " << mouse_tf_pos.y << "\n";
+          tf_mouse_down = true;
+        } 
+        // If the mouse was clicked w/in tf_rect and is held down, adjust the delta drag.
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) 
+        {
+          delta_mouse_drag = ImGui::GetMouseDragDelta(0, 0.0f) - mouse_drag;
+          mouse_drag = ImGui::GetMouseDragDelta(0, 0.0f);  
         }
+        // If the mouse is held down within the transfer function rectangle, then adjust the tf_alphas array.
+        if (tf_mouse_pos.x >= pos.x && tf_mouse_pos.x <= pos.x + tf_rect_width &&
+            tf_mouse_pos.y >= pos.y && tf_mouse_pos.y <= pos.y + tf_rect_height && tf_mouse_down) 
+        { 
+          std::cout << "Mouse position: " << tf_mouse_pos.x << ", " << tf_mouse_pos.y << "]|[";
+          // Prevent the window from being dragged.
+          io.ConfigWindowsMoveFromTitleBarOnly = true;
+          // Set tf_alphas values based on the clicked mouse position, including any distance dragged through this frame.
+          int alpha_index = tf_mouse_pos.x - pos.x;
+          std::cout << "alpha_index: " << alpha_index << "]|[" << "delta_mouse_drag.x: " << delta_mouse_drag.x << "\n";
+          if (delta_mouse_drag.x > 0) 
+          {
+            for (int i = alpha_index; i <= alpha_index + delta_mouse_drag.x; i++)
+            {
+              if ((delta_mouse_drag.x + tf_mouse_pos.x >= pos.x) && (delta_mouse_drag.x + tf_mouse_pos.x <= pos.x + tf_rect_width) &&
+                  (delta_mouse_drag.y + tf_mouse_pos.y >= pos.y) && (delta_mouse_drag.y + tf_mouse_pos.y <= pos.y + tf_rect_height))
+              {
+                //TODO: Fix choppy drawing AKA why are there skipped indicies in the drawing?
+                tf_alphas[i] = io.MousePos.y - pos.y + ((i - alpha_index) / delta_mouse_drag.x)*(delta_mouse_drag.y);
+              }
+            }
+            mouse_drag = ImGui::GetMouseDragDelta(0, 0.0f);
+          } 
+          else if (delta_mouse_drag.x < 0)
+          {
+            for (int i = alpha_index + delta_mouse_drag.x; i <= alpha_index; i++)
+            {
+              if ((delta_mouse_drag.x + tf_mouse_pos.x >= pos.x) && (delta_mouse_drag.x + tf_mouse_pos.x <= pos.x + tf_rect_width) &&
+                  (delta_mouse_drag.y + tf_mouse_pos.y >= pos.y) && (delta_mouse_drag.y + tf_mouse_pos.y <= pos.y + tf_rect_height))
+              {
+                tf_alphas[i] = io.MousePos.y - pos.y + ((i - alpha_index - delta_mouse_drag.x) / (delta_mouse_drag.x))*(delta_mouse_drag.y);
+              }
+            }
+            mouse_drag = ImGui::GetMouseDragDelta(0, 0.0f);
+          }
+          else if (delta_mouse_drag.x == 0)
+          {
+            if ((delta_mouse_drag.x + tf_mouse_pos.x >= pos.x) && (delta_mouse_drag.x + tf_mouse_pos.x <= pos.x + tf_rect_width) &&
+                  (delta_mouse_drag.y + tf_mouse_pos.y >= pos.y) && (delta_mouse_drag.y + tf_mouse_pos.y <= pos.y + tf_rect_height))
+              {
+                tf_alphas[alpha_index] = io.MousePos.y - pos.y;
+              }
+          }
+        } 
+        else 
+        {
+          io.ConfigWindowsMoveFromTitleBarOnly = false;
+        }
+        // Draw the alpha rectangle pixel column by pixel column
+        float alpha_offset = 0;
         for (int i = 0; i < cm_length; i++)
         {
-
-          bin_offset = tf_rect_height * (1 - values[i] / max_value);
-          marker_min = ImVec2(pos.x + i * bin_width, pos.y + bin_offset);
-          marker_max = ImVec2(pos.x + (i + 1) * bin_width, pos.y + bin_height + bin_offset);
-          draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(50, 50, 50, 150));
+          alpha_offset = tf_rect_height * (1 - tf_alphas[i]);
+          marker_min = ImVec2(pos.x + i, pos.y + tf_alphas[i]);
+          marker_max = ImVec2(pos.x + i + 1, pos.y + tf_rect_height);
+          draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(200, 200, 200, 200));
         }
-
+        // Check if the user released the Mouse Drag.
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) 
+        {
+          tf_mouse_down = false;
+          mouse_drag = ImVec2(0.0f, 0.0f);
+        }
         // Update CursorScreenPos to just after the TransferFunction rectangle.
         ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + tf_rect_height));
       }
